@@ -53,7 +53,6 @@ print(my_list[0])  # Output: 1
 
 ```bash
 git clone https://github.com/Tayyaba-Ramzan/Tech-Tutor-Chatbot.git
-cd tech-tutor-chatbot
 
 2. Create & Activate Virtual Environment (Optional but Recommended)
 python -m venv venv
