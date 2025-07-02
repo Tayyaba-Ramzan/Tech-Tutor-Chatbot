@@ -6,16 +6,14 @@ from openai.types.responses import ResponseTextDeltaEvent
 
 load_dotenv()
 
-# 🌐 Load Gemini API Key
-gemini_api_key = os.getenv("GEMINI_API_KEY")
+# 🌐 API Key and Client Setup
+gemini_api_key = os.getenv("GEMINI_API_KEY")  # Use uppercase for env variable name
 
-# 🌐 Setup External Client
 external_client = AsyncOpenAI(
     api_key=gemini_api_key,
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
 )
 
-# 🔧 Setup Model
 model = OpenAIChatCompletionsModel(
     model="gemini-2.0-flash",
     openai_client=external_client
@@ -27,56 +25,54 @@ config = RunConfig(
     tracing_disabled=True
 )
 
-# 🧠 All-Tech Tutor Agent (W3Schools Style)
+# 🎯 Tech Expert Agent (like W3Schools)
 agent = Agent(
     name="Tech Tutor",
     instructions="""
-You are a professional technical instructor who teaches a wide range of tech topics, similar to W3Schools.
+You are a professional and experienced technical tutor, similar to W3Schools.
+Only respond to technology-related questions. If the user asks about anything outside tech (like politics, religion, sports, etc.), politely say:
+'Sorry, I only assist with technology-related topics. Please ask a tech-related question.'
 
-✅ You must answer only technical/programming-related questions such as:
-- Python, JavaScript, HTML, CSS, SQL, C++, Java, Bash, Git, APIs
-- Topics like loops, variables, functions, databases, DOM, JSON, regex, etc.
+You can answer questions about:
+- Programming languages (Python, JavaScript, C++, etc.)
+- Web development (HTML, CSS, React, Node.js, etc.)
+- Databases (SQL, MongoDB, etc.)
+- DevOps (Git, Docker, CI/CD, etc.)
+- Computer Science fundamentals (data structures, algorithms, OS, networking)
+- APIs, libraries, tools, and frameworks
+- Tech errors and debugging help
 
-❌ If a user asks anything unrelated to technology or programming (like love, religion, movies, personal life), strictly say:
-"Sorry, I can only help with tech-related topics like Python, HTML, JavaScript, etc."
-
-You must always respond in English.
-Give clear, structured answers with code examples when relevant.
-Never say "I don't know" for tech topics. Be like a real online tutor, similar to W3Schools but more interactive.
+Always give clear explanations with code examples where relevant. Think like a real tech tutor who gives accurate, concise, and friendly responses.
 """
 )
 
-# 💬 Chat Start Handler
+# 💬 Start of Chat
 @cl.on_chat_start
 async def handle_chat_start():
     cl.user_session.set("history", [])
-    await cl.Message(content="👋 Hello! I'm your technical tutor. Ask me anything related to tech (like Python, HTML, SQL, etc).").send()
+    await cl.Message(content="👋 Hello! I'm your Tech Tutor. Ask me anything related to technology, programming, or web development.").send()
 
-# 💬 Message Handler
+# 💡 Message Handler
 @cl.on_message
 async def handle_message(message: cl.Message):
     history = cl.user_session.get("history")
     history.append({"role": "user", "content": message.content})
 
+    # 📩 Initial Response
     msg = cl.Message(content="")
     await msg.send()
 
+    # 🚀 Run agent
     result = Runner.run_streamed(
         agent,
         input=history,
         run_config=config
     )
 
-    final_response = ""
-
+    # 🔁 Stream Tokens
     async for event in result.stream_events():
         if event.type == "raw_response_event" and isinstance(event.data, ResponseTextDeltaEvent):
-            final_response += event.data.delta
             await msg.stream_token(event.data.delta)
 
-    # ✅ Update final message to stop blinking effect
-    await msg.update(content=final_response)
-
-    history.append({"role": "assistant", "content": final_response})
+    history.append({"role": "assistant", "content": result.final_output})
     cl.user_session.set("history", history)
-
